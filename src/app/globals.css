@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #10192b;
+
+  --surface: #ffffff;
+  --surface-muted: #f4f6f9;
+  --border: #dfe3ea;
+  --border-strong: #b9c1cf;
+
+  --primary: #10233f;
+  --primary-foreground: #ffffff;
+  --accent: #c8802a;
+  --accent-foreground: #2a1a05;
+
+  --success: #1e7a4c;
+  --danger: #b3392c;
+  --muted-foreground: #5b6472;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-muted-foreground: var(--muted-foreground);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b1220;
+    --foreground: #e7eaf0;
+    --surface: #10192b;
+    --surface-muted: #16223b;
+    --border: #26334d;
+    --border-strong: #3a4a6b;
+    --primary: #e7eaf0;
+    --primary-foreground: #10192b;
+    --accent: #e0a24f;
+    --accent-foreground: #2a1a05;
+    --muted-foreground: #9aa5b8;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+}
