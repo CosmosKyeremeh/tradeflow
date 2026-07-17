@@ -1,6 +1,6 @@
-import { and, desc, eq, lte } from "drizzle-orm";
+import { and, desc, eq, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { dutyCalculations, tariffEntries } from "@/db/schema";
+import { dutyCalculations, shipments, tariffEntries } from "@/db/schema";
 
 export type TariffMatch = {
   id: string;
@@ -46,15 +46,31 @@ export function computeDutyPesewas(
 // Keeps at most one DutyCalculation row per shipment, recomputed from the
 // tariff schedule as of now. If no published rate matches the HS code, any
 // stale calculation is removed rather than left showing an outdated number.
+//
+// organizationId is re-checked here (via a join back to shipments) rather
+// than trusted from the caller, so this stays safe even if a future caller
+// forgets to verify ownership before passing in a shipmentId.
 export async function syncShipmentDutyCalculation(
   shipmentId: string,
+  organizationId: string,
   hsCode: string,
   customsValuePesewasPerUnit: number,
   quantity: number,
 ): Promise<TariffMatch | null> {
   const match = await findTariffRate(hsCode);
 
-  await db.delete(dutyCalculations).where(eq(dutyCalculations.shipmentId, shipmentId));
+  await db
+    .delete(dutyCalculations)
+    .where(
+      and(
+        eq(dutyCalculations.shipmentId, shipmentId),
+        sql`exists (
+          select 1 from ${shipments}
+          where ${shipments.id} = ${dutyCalculations.shipmentId}
+          and ${shipments.organizationId} = ${organizationId}
+        )`,
+      ),
+    );
 
   if (!match) return null;
 

@@ -4,6 +4,7 @@ import {
   cloneElement,
   isValidElement,
   useEffect,
+  useRef,
   useState,
   type ReactElement,
 } from "react";
@@ -37,6 +38,8 @@ export function Modal({
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const [origin, setOrigin] = useState<Origin>(CENTER_ORIGIN);
   const [mounted, setMounted] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   // SSR-safe portal target: document.body doesn't exist during server
   // render, so this must flip after the client mounts, not during render.
@@ -53,7 +56,32 @@ export function Modal({
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") {
+        close();
+        return;
+      }
+      // Basic focus trap: Tab/Shift+Tab wraps within the dialog instead of
+      // escaping to the page underneath it (WAI-ARIA dialog pattern).
+      if (e.key === "Tab") {
+        const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        if (!focusable || focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement;
+        // Initial focus lands on the dialog container itself (tabIndex=-1,
+        // so it's not part of `focusable`) -- treat that the same as being
+        // on `first` for Shift+Tab, otherwise the very first backward tab
+        // escapes the trap before any forward tab has happened.
+        if (e.shiftKey && (active === first || active === dialogRef.current)) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     document.addEventListener("keydown", onKeyDown);
     document.body.style.overflow = "hidden";
@@ -62,6 +90,17 @@ export function Modal({
       document.body.style.overflow = "";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  // Move focus into the dialog on open, and back to whatever triggered it
+  // on close, rather than leaving keyboard/screen-reader users stranded.
+  useEffect(() => {
+    if (!isOpen) return;
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+    return () => {
+      previouslyFocusedRef.current?.focus();
+    };
   }, [isOpen]);
 
   const handleTriggerClick = (e: React.MouseEvent<HTMLElement>) => {
@@ -100,14 +139,16 @@ export function Modal({
             onClick={close}
           />
           <motion.div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-title"
+            tabIndex={-1}
             initial={{ opacity: 0, scale: 0.4, x: origin.x, y: origin.y }}
             animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
             exit={{ opacity: 0, scale: 0.4, x: origin.x, y: origin.y }}
             transition={{ type: "spring", stiffness: 340, damping: 30, mass: 0.8 }}
-            className="glass-surface elevation-lg relative z-10 flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl"
+            className="glass-surface elevation-lg relative z-10 flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl outline-none"
           >
             <div className="flex shrink-0 items-start justify-between gap-4 p-6 pb-5">
               <div>
@@ -122,7 +163,7 @@ export function Modal({
                 type="button"
                 onClick={close}
                 aria-label="Close"
-                className="shrink-0 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-surface-muted active:scale-90"
+                className="shrink-0 rounded-full p-1.5 text-muted-foreground outline-none transition-colors hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent/40 active:scale-90"
               >
                 <X className="h-4 w-4" />
               </button>

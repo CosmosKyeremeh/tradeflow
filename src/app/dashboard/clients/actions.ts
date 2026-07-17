@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { clients } from "@/db/schema";
 import { requireProfile } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export type ActionState = { error?: string };
 
@@ -19,11 +20,22 @@ export async function createClientRecord(formData: FormData): Promise<ActionStat
     return { error: "Client name is required" };
   }
 
-  await db.insert(clients).values({
+  const [created] = await db
+    .insert(clients)
+    .values({
+      organizationId: profile.organizationId,
+      name,
+      contactEmail: contactEmail || null,
+      contactPhone: contactPhone || null,
+    })
+    .returning({ id: clients.id });
+
+  await logAudit({
     organizationId: profile.organizationId,
-    name,
-    contactEmail: contactEmail || null,
-    contactPhone: contactPhone || null,
+    actorId: profile.id,
+    action: "client.create",
+    entityType: "client",
+    entityId: created.id,
   });
 
   revalidatePath("/dashboard/clients");
@@ -55,6 +67,14 @@ export async function updateClientRecord(formData: FormData): Promise<ActionStat
     })
     .where(and(eq(clients.id, id), eq(clients.organizationId, profile.organizationId)));
 
+  await logAudit({
+    organizationId: profile.organizationId,
+    actorId: profile.id,
+    action: "client.update",
+    entityType: "client",
+    entityId: id,
+  });
+
   revalidatePath("/dashboard/clients");
   return {};
 }
@@ -74,6 +94,14 @@ export async function deleteClientRecord(formData: FormData): Promise<ActionStat
   } catch {
     return { error: "Cannot delete a client with existing shipments" };
   }
+
+  await logAudit({
+    organizationId: profile.organizationId,
+    actorId: profile.id,
+    action: "client.delete",
+    entityType: "client",
+    entityId: id,
+  });
 
   revalidatePath("/dashboard/clients");
   revalidatePath("/dashboard");

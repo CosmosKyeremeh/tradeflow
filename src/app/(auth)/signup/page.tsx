@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { signup } from "./actions";
 import { Field, Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 
 export default async function SignupPage({
@@ -31,10 +32,9 @@ export default async function SignupPage({
           <Input id="email" name="email" type="email" required autoComplete="email" />
         </Field>
         <Field label="Password" htmlFor="password">
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             required
             minLength={8}
             autoComplete="new-password"

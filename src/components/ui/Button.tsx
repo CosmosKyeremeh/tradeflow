@@ -41,7 +41,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         transition={{ type: "spring", stiffness: 500, damping: 30 }}
         disabled={disabled || pending}
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+          "inline-flex items-center justify-center gap-2 rounded-lg font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-60",
           VARIANT_CLASS[variant],
           SIZE_CLASS[size],
           className,

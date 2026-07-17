@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { login } from "./actions";
 import { Field, Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 
 export default async function LoginPage({
@@ -33,13 +34,7 @@ export default async function LoginPage({
           <Input id="email" name="email" type="email" required autoComplete="email" />
         </Field>
         <Field label="Password" htmlFor="password">
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            required
-            autoComplete="current-password"
-          />
+          <PasswordInput id="password" name="password" required autoComplete="current-password" />
         </Field>
         <SubmitButton pendingLabel="Logging in…" className="w-full">
           Log in

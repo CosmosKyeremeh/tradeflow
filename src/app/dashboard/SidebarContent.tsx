@@ -30,7 +30,7 @@ export function SidebarContent({
         <form action={signOut}>
           <button
             type="submit"
-            className="mt-2 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground active:scale-95"
+            className="mt-2 rounded text-xs text-muted-foreground outline-none underline underline-offset-2 transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40 active:scale-95"
           >
             Log out
           </button>

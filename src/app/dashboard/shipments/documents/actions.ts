@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { documents, shipments } from "@/db/schema";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { logAudit } from "@/lib/audit";
 import type { DocType, ShipmentDocument } from "./types";
 
 export type ActionState = { error?: string };
@@ -78,13 +79,25 @@ export async function recordDocument(formData: FormData): Promise<ActionState> {
     return { error: "Shipment not found" };
   }
 
-  await db.insert(documents).values({
+  const [created] = await db
+    .insert(documents)
+    .values({
+      organizationId: profile.organizationId,
+      shipmentId,
+      docType,
+      filePath,
+      fileName,
+      uploadedBy: profile.id,
+    })
+    .returning({ id: documents.id });
+
+  await logAudit({
     organizationId: profile.organizationId,
-    shipmentId,
-    docType,
-    filePath,
-    fileName,
-    uploadedBy: profile.id,
+    actorId: profile.id,
+    action: "document.upload",
+    entityType: "document",
+    entityId: created.id,
+    metadata: { shipmentId, fileName, docType },
   });
 
   revalidatePath("/dashboard/shipments");
@@ -105,7 +118,18 @@ export async function deleteDocument(documentId: string): Promise<ActionState> {
   const supabase = await createClient();
   await supabase.storage.from(BUCKET).remove([doc.filePath]);
 
-  await db.delete(documents).where(eq(documents.id, documentId));
+  await db
+    .delete(documents)
+    .where(and(eq(documents.id, documentId), eq(documents.organizationId, profile.organizationId)));
+
+  await logAudit({
+    organizationId: profile.organizationId,
+    actorId: profile.id,
+    action: "document.delete",
+    entityType: "document",
+    entityId: documentId,
+    metadata: { fileName: doc.fileName },
+  });
 
   revalidatePath("/dashboard/shipments");
   return {};

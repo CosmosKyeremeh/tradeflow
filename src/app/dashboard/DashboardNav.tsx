@@ -35,7 +35,7 @@ export function DashboardNav({
             key={item.href}
             href={item.href}
             onClick={onNavigate}
-            className="relative block rounded-lg px-3 py-2 text-sm text-foreground transition-colors"
+            className="relative block rounded-lg px-3 py-2 text-sm text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             {isActive && (
               <motion.span

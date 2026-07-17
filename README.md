@@ -5,8 +5,8 @@ See `TradeFlow_PRD_v1.0.md` (from our planning conversation) for the full produc
 
 Status: **Phase 0** (foundations), **Phase 1** (client & shipment CRUD),
 **Phase 2** (duty calculator), **Phase 3** (documents & in-app
-notifications), and **Phase 4** (trade analytics) are in. See
-[What's next](#whats-next-phase-5).
+notifications), **Phase 4** (trade analytics), and **Phase 5** (hardening
+& compliance) are in. See [What's next](#whats-next-phase-6).
 
 ## Stack
 
@@ -41,7 +41,7 @@ npm install
 
 ## 4. Apply the database schema
 
-Four migration files live in `drizzle/`, run in order:
+Five migration files live in `drizzle/`, run in order:
 
 - `0000_lonely_mauler.sql` — tables, enums, and foreign keys (Drizzle-generated from `src/db/schema.ts`)
 - `0001_rls_and_triggers.sql` — row-level security policies and the
@@ -49,6 +49,8 @@ Four migration files live in `drizzle/`, run in order:
 - `0002_notifications.sql` — the `notifications` table (Drizzle-generated)
 - `0003_documents_storage.sql` — notifications RLS, the private `documents`
   Storage bucket, and its org-scoped storage policies
+- `0004_profile_column_grants.sql` — closes a privilege-escalation hole in
+  the default Supabase PostgREST grants (see [Security & hardening](#security--hardening))
 
 Easiest path: open the **SQL Editor** in the Supabase dashboard, paste each
 file's contents in order, and run it. Alternatively, with `DATABASE_URL` set
@@ -59,9 +61,12 @@ npm run db:migrate
 ```
 
 > `npm run db:migrate` only applies Drizzle-tracked migrations (`0000_...`,
-> `0002_...`). Run `0001_rls_and_triggers.sql` and `0003_documents_storage.sql`
-> manually via the SQL Editor, since RLS policies and Storage setup aren't
-> part of Drizzle's own migration tracking in this setup.
+> `0002_...`). Run `0001_rls_and_triggers.sql`, `0003_documents_storage.sql`,
+> and `0004_profile_column_grants.sql` manually via the SQL Editor, since RLS
+> policies, Storage setup, and grants aren't part of Drizzle's own migration
+> tracking in this setup. **`0004` is not optional** — without it, any
+> signed-up user can escalate to admin or read another organization's data
+> via Supabase's public REST API (see below).
 
 ## 5. Run it
 
@@ -120,6 +125,76 @@ charting library, consistent with the rest of the UI kit. A CSV export
 of every shipment (`/api/analytics/export`) is linked from the page
 header.
 
+## Security & hardening
+
+Drizzle connects to Postgres directly (not through PostgREST), so it
+bypasses RLS entirely — every Drizzle query in this codebase filters by
+`organizationId` itself, and that app-layer filtering, not RLS, is what
+protects the app's own request paths. RLS still matters for a *different*
+reason: Supabase auto-exposes every table over a public REST API
+(`/rest/v1/...`), authenticated by any signed-in user's own JWT, and grants
+that role full table privileges by default. RLS policies are the only
+gate on that path.
+
+That gate had a real hole: `profiles_update_self` (and
+`notifications_update_own`) only checked *which row* a user could touch
+(`id = auth.uid()`), not *which columns*. Combined with Supabase's default
+grants, this meant any authenticated user could `PATCH` their own
+`profiles` row via the public REST API — bypassing the Next.js app
+entirely — to rewrite `organization_id` (jump into another org's data),
+`email` (spoof an `ADMIN_EMAILS` address and pass `isAdminEmail()`), or
+`role`. Confirmed exploitable against a disposable test account, then
+closed in `0004_profile_column_grants.sql` by revoking table-level
+`UPDATE` and re-granting it only on the one column each table's own UI
+lets a user change (`full_name`, `read_at`).
+
+Also added this phase:
+
+- Security headers in `next.config.ts` — CSP, `X-Frame-Options`,
+  `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`,
+  `Strict-Transport-Security` in production. The CSP allows
+  `'unsafe-inline'` for scripts/styles (Next's streamed RSC payload and
+  font optimization both inject inline `<script>`/`<style>` tags) — a
+  nonce-based strict CSP would close that gap but forces every route into
+  dynamic rendering, a bigger change than this pass took on.
+- CSV/formula-injection guard on `/api/analytics/export` — a client or
+  shipment name starting with `=`, `+`, `-`, or `@` now gets a literal-text
+  prefix so it can't execute as a formula when opened in Excel/Sheets.
+- `audit_log` (schema already had the table, nothing wrote to it) now
+  records every client/shipment/document/tariff create, update, and
+  delete — see `src/lib/audit.ts`.
+- Defense-in-depth: a couple of internal helpers (`syncShipmentDutyCalculation`,
+  `deleteDocument`) that trusted their caller's ownership check now
+  re-verify `organizationId` themselves.
+
+**Known gaps, not fixed this phase** (need a product/legal decision, not
+just code): no privacy policy or terms of service page exists yet, so none
+is linked from signup — draft the actual legal content first, then it's a
+quick wire-up. No self-service account/data-erasure flow for Data
+Protection Act (Act 843) right-to-erasure requests; relatedly, deleting a
+client is blocked once it has shipment history (`onDelete: "restrict"`),
+which will need a retention-policy decision (customs records likely have
+their own statutory retention period) before an erasure flow can be built.
+Formal registration as a data controller with Ghana's Data Protection
+Commission is an organizational step, not an engineering one.
+
+## Installable (PWA)
+
+`app/manifest.ts` (Next's native manifest route, served at
+`/manifest.webmanifest`) plus a deliberately minimal `public/sw.js` make the
+app installable — Chrome/Android show a native install prompt, and
+`dashboard/InstallPrompt.tsx` renders a custom "Install" banner once
+`beforeinstallprompt` fires (iOS gets manual "Share → Add to Home Screen"
+instructions instead, since Safari has no install-prompt API). The service
+worker does no offline caching on purpose — it exists only to satisfy
+installability criteria; caching live shipment/duty data would mean showing
+stale numbers, which is worse than no offline support at all.
+
+`proxy.ts`'s auth-gate matcher explicitly excludes `manifest.webmanifest`
+and `sw.js` — both need to stay reachable logged-out, since the browser
+evaluates install criteria (and registers the worker) independent of auth
+state, and neither is valid JSON/JS once redirected to the login page.
+
 ## Project structure
 
 ```
@@ -135,9 +210,11 @@ src/
       admin/tariffs/              — tariff schedule CRUD (ADMIN_EMAILS-gated)
       layout.tsx, page.tsx        — protected shell + overview bento stats
       MobileNav.tsx, SidebarContent.tsx — hamburger drawer nav (mobile) / aside (desktop)
+      InstallPrompt.tsx           — custom "Add to Home Screen" banner
     api/analytics/export/         — CSV export route handler
+    manifest.ts                   — PWA web app manifest
     layout.tsx, globals.css       — root layout, design tokens (incl. glass/elevation/motion)
-  components/ui/                  — Button, Card, Modal (portaled), Skeleton, Select, Input, etc.
+  components/ui/                  — Button, Card, Modal (portaled), Skeleton, Select, Input, PasswordInput, etc.
   db/
     schema.ts                     — Drizzle schema (source of truth)
     index.ts                      — Drizzle client
@@ -146,18 +223,23 @@ src/
     auth.ts                       — requireProfile()/requireAdmin() helpers
     duty.ts                       — tariff lookup + duty calculation engine
     notifications.ts              — org-member notification fan-out
+    audit.ts                      — writes to audit_log on every mutation
     utils.ts                      — cn() helper, GHS currency formatter
   proxy.ts                        — refreshes the Supabase session, gates protected routes
 drizzle/                          — SQL migrations
+public/sw.js                      — minimal service worker (installability only, no offline caching)
 scripts/seed-tariffs.mjs          — seeds placeholder tariff rates (npm run db:seed)
+next.config.ts                    — security headers (CSP, HSTS, etc.)
 .github/workflows/ci.yml          — lint, typecheck, build on every PR
 ```
 
-## What's next (Phase 5)
+## What's next (Phase 6)
 
-Hardening & compliance — security review, RLS policy audit, Data
-Protection Act compliance pass, performance testing on low-end devices,
-and an accessibility audit.
+Closed pilot — onboard a handful of real forwarders/traders, gather
+feedback, fix what actually breaks in practice. Mostly an operational
+phase (recruiting pilot users, not code), though the "known gaps" above
+(privacy policy, erasure flow) are worth resolving before real customer
+data shows up.
 
 ## Scripts
 

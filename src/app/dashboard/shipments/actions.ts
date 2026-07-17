@@ -7,6 +7,7 @@ import { clients, shipments } from "@/db/schema";
 import { requireProfile } from "@/lib/auth";
 import { syncShipmentDutyCalculation } from "@/lib/duty";
 import { notifyOrgMembers } from "@/lib/notifications";
+import { logAudit } from "@/lib/audit";
 import { STATUS_LABEL, STATUS_ORDER, type ShipmentStatus } from "./types";
 
 export type ActionState = { error?: string };
@@ -85,7 +86,21 @@ export async function createShipmentRecord(formData: FormData): Promise<ActionSt
     })
     .returning({ id: shipments.id });
 
-  await syncShipmentDutyCalculation(created.id, hsCode, customsValuePesewas, quantity);
+  await syncShipmentDutyCalculation(
+    created.id,
+    profile.organizationId,
+    hsCode,
+    customsValuePesewas,
+    quantity,
+  );
+
+  await logAudit({
+    organizationId: profile.organizationId,
+    actorId: profile.id,
+    action: "shipment.create",
+    entityType: "shipment",
+    entityId: created.id,
+  });
 
   revalidatePath("/dashboard/shipments");
   revalidatePath("/dashboard");
@@ -133,11 +148,21 @@ export async function updateShipmentRecord(formData: FormData): Promise<ActionSt
     })
     .where(and(eq(shipments.id, id), eq(shipments.organizationId, profile.organizationId)));
 
-  await syncShipmentDutyCalculation(id, hsCode, customsValuePesewas, quantity);
+  await syncShipmentDutyCalculation(id, profile.organizationId, hsCode, customsValuePesewas, quantity);
 
   if (nextStatus !== existing.status) {
     await notifyStatusChange(profile.organizationId, profile.id, id, client.name, hsCode, nextStatus);
   }
+
+  await logAudit({
+    organizationId: profile.organizationId,
+    actorId: profile.id,
+    action: "shipment.update",
+    entityType: "shipment",
+    entityId: id,
+    metadata:
+      nextStatus !== existing.status ? { statusFrom: existing.status, statusTo: nextStatus } : undefined,
+  });
 
   revalidatePath("/dashboard/shipments");
   revalidatePath("/dashboard");
@@ -176,6 +201,15 @@ export async function advanceShipmentStatus(
     status,
   );
 
+  await logAudit({
+    organizationId: profile.organizationId,
+    actorId: profile.id,
+    action: "shipment.status_change",
+    entityType: "shipment",
+    entityId: id,
+    metadata: { statusTo: status },
+  });
+
   revalidatePath("/dashboard/shipments");
   revalidatePath("/dashboard");
   return {};
@@ -189,6 +223,14 @@ export async function deleteShipmentRecord(formData: FormData): Promise<ActionSt
   await db
     .delete(shipments)
     .where(and(eq(shipments.id, id), eq(shipments.organizationId, profile.organizationId)));
+
+  await logAudit({
+    organizationId: profile.organizationId,
+    actorId: profile.id,
+    action: "shipment.delete",
+    entityType: "shipment",
+    entityId: id,
+  });
 
   revalidatePath("/dashboard/shipments");
   revalidatePath("/dashboard");

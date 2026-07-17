@@ -73,7 +73,7 @@ export function NotificationBell() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label="Notifications"
-        className="relative rounded-lg p-2 text-foreground transition-colors hover:bg-surface-muted active:scale-90"
+        className="relative rounded-lg p-2 text-foreground outline-none transition-colors hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent/40 active:scale-90"
       >
         <Bell className="h-5 w-5" />
         {unread > 0 && (
@@ -103,7 +103,7 @@ export function NotificationBell() {
                 <button
                   type="button"
                   onClick={handleMarkAll}
-                  className="flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  className="flex items-center gap-1 rounded text-xs text-muted-foreground outline-none underline underline-offset-2 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/40"
                 >
                   <Check className="h-3 w-3" />
                   Mark all read
@@ -125,7 +125,7 @@ export function NotificationBell() {
                       <button
                         type="button"
                         onClick={() => !n.readAt && handleMarkOne(n.id)}
-                        className="flex w-full items-start gap-2 border-b border-border px-4 py-3 text-left last:border-0 hover:bg-surface-muted"
+                        className="flex w-full items-start gap-2 border-b border-border px-4 py-3 text-left outline-none last:border-0 hover:bg-surface-muted focus-visible:bg-surface-muted"
                       >
                         <span
                           className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${n.readAt ? "bg-transparent" : "bg-accent"}`}

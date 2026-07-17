@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { tariffEntries } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export type ActionState = { error?: string };
 
@@ -23,7 +24,7 @@ function validateRate(raw: string): number | null {
 }
 
 export async function createTariffEntry(formData: FormData): Promise<ActionState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { hsCode, description, ratePercentRaw, effectiveDate } = readTariffFields(formData);
 
   if (!hsCode) return { error: "HS code is required" };
@@ -32,11 +33,23 @@ export async function createTariffEntry(formData: FormData): Promise<ActionState
   if (ratePercent === null) return { error: "Enter a valid rate percentage" };
   if (!effectiveDate) return { error: "Effective date is required" };
 
-  await db.insert(tariffEntries).values({
-    hsCode,
-    description,
-    ratePercent: ratePercent.toFixed(2),
-    effectiveDate,
+  const [created] = await db
+    .insert(tariffEntries)
+    .values({
+      hsCode,
+      description,
+      ratePercent: ratePercent.toFixed(2),
+      effectiveDate,
+    })
+    .returning({ id: tariffEntries.id });
+
+  await logAudit({
+    organizationId: null,
+    actorId: admin.id,
+    action: "tariff.create",
+    entityType: "tariff_entry",
+    entityId: created.id,
+    metadata: { hsCode, ratePercent },
   });
 
   revalidatePath("/dashboard/admin/tariffs");
@@ -44,7 +57,7 @@ export async function createTariffEntry(formData: FormData): Promise<ActionState
 }
 
 export async function updateTariffEntry(formData: FormData): Promise<ActionState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const id = String(formData.get("id") ?? "");
   const { hsCode, description, ratePercentRaw, effectiveDate } = readTariffFields(formData);
 
@@ -60,12 +73,21 @@ export async function updateTariffEntry(formData: FormData): Promise<ActionState
     .set({ hsCode, description, ratePercent: ratePercent.toFixed(2), effectiveDate })
     .where(eq(tariffEntries.id, id));
 
+  await logAudit({
+    organizationId: null,
+    actorId: admin.id,
+    action: "tariff.update",
+    entityType: "tariff_entry",
+    entityId: id,
+    metadata: { hsCode, ratePercent },
+  });
+
   revalidatePath("/dashboard/admin/tariffs");
   return {};
 }
 
 export async function deleteTariffEntry(formData: FormData): Promise<ActionState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "Missing tariff entry id" };
 
@@ -74,6 +96,14 @@ export async function deleteTariffEntry(formData: FormData): Promise<ActionState
   } catch {
     return { error: "Can't delete a rate that's already been used in a duty calculation" };
   }
+
+  await logAudit({
+    organizationId: null,
+    actorId: admin.id,
+    action: "tariff.delete",
+    entityType: "tariff_entry",
+    entityId: id,
+  });
 
   revalidatePath("/dashboard/admin/tariffs");
   return {};

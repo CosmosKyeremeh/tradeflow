@@ -137,7 +137,7 @@ export function DocumentsSection({ shipmentId }: { shipmentId: string }) {
                   onClick={() => handleDelete(doc)}
                   disabled={deletingId === doc.id}
                   aria-label={`Delete ${doc.fileName}`}
-                  className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger active:scale-90 disabled:opacity-50"
+                  className="shrink-0 rounded p-1 text-muted-foreground outline-none transition-colors hover:bg-danger/10 hover:text-danger focus-visible:ring-2 focus-visible:ring-accent/40 active:scale-90 disabled:opacity-50"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

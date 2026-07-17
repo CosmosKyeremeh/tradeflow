@@ -4,11 +4,17 @@ import { clients, dutyCalculations, shipments } from "@/db/schema";
 import { requireProfile } from "@/lib/auth";
 import { formatGHS } from "@/lib/utils";
 
+// Client/shipment names and descriptions are free text any org member can
+// set, and this file is meant to be opened in Excel/Sheets. Without this,
+// a cell starting with =, +, -, or @ gets interpreted as a formula by the
+// spreadsheet app on open (CSV/formula injection, CWE-1236) -- prefixing a
+// leading apostrophe forces it to render as literal text instead.
 function csvCell(value: string) {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const escaped = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  if (/[",\n]/.test(escaped)) {
+    return `"${escaped.replace(/"/g, '""')}"`;
   }
-  return value;
+  return escaped;
 }
 
 function csvRow(cells: string[]) {

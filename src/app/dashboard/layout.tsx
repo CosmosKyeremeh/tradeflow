@@ -5,6 +5,7 @@ import { profiles, organizations } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { SidebarContent } from "./SidebarContent";
 import { MobileNav } from "./MobileNav";
+import { InstallPrompt } from "./InstallPrompt";
 import { isAdminEmail } from "@/lib/auth";
 
 export default async function DashboardLayout({
@@ -45,6 +46,7 @@ export default async function DashboardLayout({
       <main className="flex-1 bg-surface-muted p-4 sm:p-6 lg:p-8">
         <div className="mx-auto max-w-6xl">{children}</div>
       </main>
+      <InstallPrompt />
     </div>
   );
 }

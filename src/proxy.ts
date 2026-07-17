@@ -7,6 +7,10 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // manifest.webmanifest and sw.js must stay reachable unauthenticated --
+    // the browser evaluates PWA installability (and registers the service
+    // worker) independent of whether anyone's logged in, and neither
+    // response is valid JSON/JS once redirected to the login HTML page.
+    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
   ],
 };
