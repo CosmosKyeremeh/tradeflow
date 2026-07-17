@@ -123,6 +123,7 @@ export function TariffsBoard({ initialEntries }: { initialEntries: TariffEntry[]
         </Card>
       ) : (
         <Card className="overflow-hidden p-0">
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-border bg-surface-muted text-xs text-muted-foreground">
               <tr>
@@ -188,6 +189,7 @@ export function TariffsBoard({ initialEntries }: { initialEntries: TariffEntry[]
               </AnimatePresence>
             </tbody>
           </table>
+          </div>
         </Card>
       )}
     </div>

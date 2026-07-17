@@ -3,8 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
 import { profiles, organizations } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { signOut } from "./actions";
-import { DashboardNav } from "./DashboardNav";
+import { SidebarContent } from "./SidebarContent";
+import { MobileNav } from "./MobileNav";
 import { isAdminEmail } from "@/lib/auth";
 
 export default async function DashboardLayout({
@@ -32,31 +32,17 @@ export default async function DashboardLayout({
     .where(eq(profiles.id, user.id))
     .limit(1);
 
+  const isAdmin = isAdminEmail(profile?.email);
+  const organizationName = profile?.organizationName ?? "Your organization";
+  const userLabel = profile?.fullName ?? profile?.email ?? "";
+
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col sm:flex-row">
+      <MobileNav isAdmin={isAdmin} organizationName={organizationName} userLabel={userLabel} />
       <aside className="hidden w-56 shrink-0 border-r border-border bg-surface sm:flex sm:flex-col">
-        <div className="border-b border-border px-4 py-4">
-          <p className="text-sm font-medium text-primary">TradeFlow</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {profile?.organizationName ?? "Your organization"}
-          </p>
-        </div>
-        <DashboardNav isAdmin={isAdminEmail(profile?.email)} />
-        <div className="border-t border-border px-4 py-4">
-          <p className="truncate text-xs text-muted-foreground">
-            {profile?.fullName ?? profile?.email}
-          </p>
-          <form action={signOut}>
-            <button
-              type="submit"
-              className="mt-2 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground active:scale-95"
-            >
-              Log out
-            </button>
-          </form>
-        </div>
+        <SidebarContent isAdmin={isAdmin} organizationName={organizationName} userLabel={userLabel} />
       </aside>
-      <main className="flex-1 bg-surface-muted p-6 sm:p-8">
+      <main className="flex-1 bg-surface-muted p-4 sm:p-6 lg:p-8">
         <div className="mx-auto max-w-6xl">{children}</div>
       </main>
     </div>

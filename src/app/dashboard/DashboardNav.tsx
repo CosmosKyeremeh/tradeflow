@@ -13,7 +13,13 @@ const NAV_ITEMS = [
 
 const ADMIN_NAV_ITEMS = [{ href: "/dashboard/admin/tariffs", label: "Tariff schedule" }];
 
-export function DashboardNav({ isAdmin }: { isAdmin: boolean }) {
+export function DashboardNav({
+  isAdmin,
+  onNavigate,
+}: {
+  isAdmin: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const items = isAdmin ? [...NAV_ITEMS, ...ADMIN_NAV_ITEMS] : NAV_ITEMS;
 
@@ -27,6 +33,7 @@ export function DashboardNav({ isAdmin }: { isAdmin: boolean }) {
           <Link
             key={item.href}
             href={item.href}
+            onClick={onNavigate}
             className="relative block rounded-lg px-3 py-2 text-sm text-foreground transition-colors"
           >
             {isActive && (
