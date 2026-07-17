@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { login } from "./actions";
+import { Field, Input } from "@/components/ui/Input";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; message?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, message } = await searchParams;
 
   return (
     <div>
@@ -15,45 +17,33 @@ export default async function LoginPage({
         Track your shipments and clients.
       </p>
 
+      {message && (
+        <p className="mb-4 rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
+          {message}
+        </p>
+      )}
       {error && (
-        <p className="mb-4 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+        <p className="mb-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       )}
 
       <form action={login} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="mb-1 block text-sm text-foreground">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-accent"
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="mb-1 block text-sm text-foreground">
-            Password
-          </label>
-          <input
+        <Field label="Email" htmlFor="email">
+          <Input id="email" name="email" type="email" required autoComplete="email" />
+        </Field>
+        <Field label="Password" htmlFor="password">
+          <Input
             id="password"
             name="password"
             type="password"
             required
             autoComplete="current-password"
-            className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-accent"
           />
-        </div>
-        <button
-          type="submit"
-          className="w-full rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-        >
+        </Field>
+        <SubmitButton pendingLabel="Logging in…" className="w-full">
           Log in
-        </button>
+        </SubmitButton>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">

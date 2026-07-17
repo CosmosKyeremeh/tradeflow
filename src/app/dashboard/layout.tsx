@@ -1,16 +1,10 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
 import { profiles, organizations } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { signOut } from "./actions";
-
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Overview" },
-  { href: "/dashboard/clients", label: "Clients" },
-  { href: "/dashboard/shipments", label: "Shipments" },
-];
+import { DashboardNav } from "./DashboardNav";
 
 export default async function DashboardLayout({
   children,
@@ -46,17 +40,7 @@ export default async function DashboardLayout({
             {profile?.organizationName ?? "Your organization"}
           </p>
         </div>
-        <nav className="flex-1 space-y-1 px-2 py-4">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-surface-muted"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <DashboardNav />
         <div className="border-t border-border px-4 py-4">
           <p className="truncate text-xs text-muted-foreground">
             {profile?.fullName ?? profile?.email}
@@ -64,14 +48,16 @@ export default async function DashboardLayout({
           <form action={signOut}>
             <button
               type="submit"
-              className="mt-2 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              className="mt-2 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground active:scale-95"
             >
               Log out
             </button>
           </form>
         </div>
       </aside>
-      <main className="flex-1 bg-surface-muted p-6">{children}</main>
+      <main className="flex-1 bg-surface-muted p-6 sm:p-8">
+        <div className="mx-auto max-w-6xl">{children}</div>
+      </main>
     </div>
   );
 }

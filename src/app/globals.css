@@ -17,6 +17,21 @@
   --success: #1e7a4c;
   --danger: #b3392c;
   --muted-foreground: #5b6472;
+
+  /* Liquid glass & soft elevation */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-sm: 0 2px 6px -2px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 8px 24px -6px rgba(16, 24, 40, 0.12), 0 2px 8px -2px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 20px 48px -12px rgba(16, 24, 40, 0.2), 0 8px 16px -4px rgba(16, 24, 40, 0.08);
+
+  /* Motion */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
 }
 
 @theme inline {
@@ -48,6 +63,13 @@
     --accent: #e0a24f;
     --accent-foreground: #2a1a05;
     --muted-foreground: #9aa5b8;
+
+    --glass-bg: rgba(16, 25, 43, 0.65);
+    --glass-border: rgba(231, 234, 240, 0.08);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 2px 6px -2px rgba(0, 0, 0, 0.32), 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.4), 0 2px 8px -2px rgba(0, 0, 0, 0.24);
+    --shadow-lg: 0 20px 48px -12px rgba(0, 0, 0, 0.55), 0 8px 16px -4px rgba(0, 0, 0, 0.3);
   }
 }
 
@@ -56,4 +78,58 @@ body {
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
+}
+
+@layer utilities {
+  .glass-surface {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid var(--glass-border);
+  }
+
+  .elevation-xs {
+    box-shadow: var(--shadow-xs);
+  }
+  .elevation-sm {
+    box-shadow: var(--shadow-sm);
+  }
+  .elevation-md {
+    box-shadow: var(--shadow-md);
+  }
+  .elevation-lg {
+    box-shadow: var(--shadow-lg);
+  }
+
+  .skeleton {
+    border-radius: 0.5rem;
+    background: linear-gradient(
+      100deg,
+      var(--surface-muted) 30%,
+      var(--border) 45%,
+      var(--surface-muted) 60%
+    );
+    background-size: 300% 100%;
+    animation: shimmer 1.7s ease-in-out infinite;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

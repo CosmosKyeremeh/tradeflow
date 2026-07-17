@@ -78,7 +78,7 @@ src/
   lib/
     supabase/                     — browser, server, and middleware clients
     utils.ts                      — cn() helper, GHS currency formatter
-  middleware.ts                   — refreshes the Supabase session, gates protected routes
+  proxy.ts                        — refreshes the Supabase session, gates protected routes
 drizzle/                          — SQL migrations
 .github/workflows/ci.yml          — lint, typecheck, build on every PR
 ```
