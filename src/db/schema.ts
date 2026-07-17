@@ -159,6 +159,26 @@ export const documents = pgTable("documents", {
     .defaultNow(),
 });
 
+// In-app notifications. Email delivery is a future addition -- see
+// TradeFlow_PRD_v1.0.md Phase 3 -- once a provider is chosen; this table
+// is the trigger point that a future email job would read from.
+export const notifications = pgTable("notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  recipientId: uuid("recipient_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  shipmentId: uuid("shipment_id").references(() => shipments.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 50 }).notNull(),
+  message: text("message").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const auditLog = pgTable("audit_log", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id").references(() => organizations.id, {

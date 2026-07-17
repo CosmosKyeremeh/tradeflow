@@ -6,7 +6,8 @@ import { db } from "@/db";
 import { clients, shipments } from "@/db/schema";
 import { requireProfile } from "@/lib/auth";
 import { syncShipmentDutyCalculation } from "@/lib/duty";
-import { STATUS_ORDER, type ShipmentStatus } from "./types";
+import { notifyOrgMembers } from "@/lib/notifications";
+import { STATUS_LABEL, STATUS_ORDER, type ShipmentStatus } from "./types";
 
 export type ActionState = { error?: string };
 
@@ -16,13 +17,13 @@ function parseCustomsValue(raw: string): number | null {
   return Math.round(value * 100);
 }
 
-async function assertOwnedClient(clientId: string, organizationId: string) {
+async function findOwnedClient(clientId: string, organizationId: string) {
   const [client] = await db
-    .select({ id: clients.id })
+    .select({ id: clients.id, name: clients.name })
     .from(clients)
     .where(and(eq(clients.id, clientId), eq(clients.organizationId, organizationId)))
     .limit(1);
-  return Boolean(client);
+  return client ?? null;
 }
 
 function readShipmentFields(formData: FormData) {
@@ -34,6 +35,23 @@ function readShipmentFields(formData: FormData) {
   const status = String(formData.get("status") ?? "booked") as ShipmentStatus;
 
   return { clientId, hsCode, description, customsValueGhs, quantityRaw, status };
+}
+
+async function notifyStatusChange(
+  organizationId: string,
+  actorId: string,
+  shipmentId: string,
+  clientName: string,
+  hsCode: string,
+  status: ShipmentStatus,
+) {
+  await notifyOrgMembers({
+    organizationId,
+    excludeProfileId: actorId,
+    shipmentId,
+    type: "shipment_status_changed",
+    message: `${clientName} — HS ${hsCode} moved to ${STATUS_LABEL[status]}`,
+  });
 }
 
 export async function createShipmentRecord(formData: FormData): Promise<ActionState> {
@@ -50,9 +68,8 @@ export async function createShipmentRecord(formData: FormData): Promise<ActionSt
   const quantity = Number.parseInt(quantityRaw, 10);
   if (!Number.isInteger(quantity) || quantity < 1) return { error: "Quantity must be at least 1" };
 
-  if (!(await assertOwnedClient(clientId, profile.organizationId))) {
-    return { error: "That client wasn't found" };
-  }
+  const client = await findOwnedClient(clientId, profile.organizationId);
+  if (!client) return { error: "That client wasn't found" };
 
   const [created] = await db
     .insert(shipments)
@@ -91,9 +108,17 @@ export async function updateShipmentRecord(formData: FormData): Promise<ActionSt
   const quantity = Number.parseInt(quantityRaw, 10);
   if (!Number.isInteger(quantity) || quantity < 1) return { error: "Quantity must be at least 1" };
 
-  if (!(await assertOwnedClient(clientId, profile.organizationId))) {
-    return { error: "That client wasn't found" };
-  }
+  const client = await findOwnedClient(clientId, profile.organizationId);
+  if (!client) return { error: "That client wasn't found" };
+
+  const [existing] = await db
+    .select({ status: shipments.status })
+    .from(shipments)
+    .where(and(eq(shipments.id, id), eq(shipments.organizationId, profile.organizationId)))
+    .limit(1);
+  if (!existing) return { error: "Shipment not found" };
+
+  const nextStatus = STATUS_ORDER.includes(status) ? status : "booked";
 
   await db
     .update(shipments)
@@ -103,12 +128,16 @@ export async function updateShipmentRecord(formData: FormData): Promise<ActionSt
       description: description || null,
       customsValuePesewas,
       quantity,
-      status: STATUS_ORDER.includes(status) ? status : "booked",
+      status: nextStatus,
       updatedAt: new Date(),
     })
     .where(and(eq(shipments.id, id), eq(shipments.organizationId, profile.organizationId)));
 
   await syncShipmentDutyCalculation(id, hsCode, customsValuePesewas, quantity);
+
+  if (nextStatus !== existing.status) {
+    await notifyStatusChange(profile.organizationId, profile.id, id, client.name, hsCode, nextStatus);
+  }
 
   revalidatePath("/dashboard/shipments");
   revalidatePath("/dashboard");
@@ -122,10 +151,30 @@ export async function advanceShipmentStatus(
   const profile = await requireProfile();
   if (!STATUS_ORDER.includes(status)) return { error: "Invalid status" };
 
+  const [shipment] = await db
+    .select({
+      hsCode: shipments.hsCode,
+      clientName: clients.name,
+    })
+    .from(shipments)
+    .innerJoin(clients, eq(shipments.clientId, clients.id))
+    .where(and(eq(shipments.id, id), eq(shipments.organizationId, profile.organizationId)))
+    .limit(1);
+  if (!shipment) return { error: "Shipment not found" };
+
   await db
     .update(shipments)
     .set({ status, updatedAt: new Date() })
     .where(and(eq(shipments.id, id), eq(shipments.organizationId, profile.organizationId)));
+
+  await notifyStatusChange(
+    profile.organizationId,
+    profile.id,
+    id,
+    shipment.clientName,
+    shipment.hsCode,
+    status,
+  );
 
   revalidatePath("/dashboard/shipments");
   revalidatePath("/dashboard");

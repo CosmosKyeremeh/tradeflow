@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Menu, X } from "lucide-react";
 import { SidebarContent } from "./SidebarContent";
+import { NotificationBell } from "./notifications/NotificationBell";
 
 export function MobileNav({
   isAdmin,
@@ -33,14 +34,17 @@ export function MobileNav({
     <>
       <header className="flex items-center justify-between border-b border-border bg-surface px-4 py-3 sm:hidden">
         <p className="text-sm font-medium text-primary">TradeFlow</p>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Open menu"
-          className="rounded-lg p-2 text-foreground transition-colors hover:bg-surface-muted active:scale-90"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+            className="rounded-lg p-2 text-foreground transition-colors hover:bg-surface-muted active:scale-90"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       <AnimatePresence>
@@ -76,6 +80,7 @@ export function MobileNav({
                 organizationName={organizationName}
                 userLabel={userLabel}
                 onNavigate={() => setOpen(false)}
+                showBell={false}
               />
             </motion.div>
           </div>

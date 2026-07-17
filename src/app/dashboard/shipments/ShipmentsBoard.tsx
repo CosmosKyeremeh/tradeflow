@@ -16,6 +16,7 @@ import {
 } from "./actions";
 import { ShipmentForm } from "./ShipmentForm";
 import { StatusBadge } from "./StatusBadge";
+import { DocumentsSection } from "./documents/DocumentsSection";
 import { STATUS_LABEL, nextStatus, type ClientOption, type OptimisticShipment, type Shipment } from "./types";
 
 type OptimisticAction =
@@ -300,18 +301,21 @@ function EditShipmentPanel({
 }) {
   const [error, setError] = useState<string | null>(null);
   return (
-    <form
-      action={async (fd) => {
-        const result = await onSubmit(fd, close);
-        setError(result.error ?? null);
-      }}
-    >
-      <ShipmentForm
-        shipment={shipment}
-        clientOptions={clientOptions}
-        submitLabel="Save changes"
-        error={error}
-      />
-    </form>
+    <div>
+      <form
+        action={async (fd) => {
+          const result = await onSubmit(fd, close);
+          setError(result.error ?? null);
+        }}
+      >
+        <ShipmentForm
+          shipment={shipment}
+          clientOptions={clientOptions}
+          submitLabel="Save changes"
+          error={error}
+        />
+      </form>
+      <DocumentsSection shipmentId={shipment.id} />
+    </div>
   );
 }
