@@ -21,7 +21,7 @@ import { STATUS_LABEL, nextStatus, type ClientOption, type OptimisticShipment, t
 type OptimisticAction =
   | { type: "add"; shipment: OptimisticShipment }
   | { type: "remove"; id: string }
-  | { type: "update"; id: string; patch: Partial<Shipment> & { clientName?: string } };
+  | { type: "update"; id: string; patch: Partial<OptimisticShipment> };
 
 function reducer(state: OptimisticShipment[], action: OptimisticAction): OptimisticShipment[] {
   switch (action.type) {
@@ -69,6 +69,8 @@ export function ShipmentsBoard({
       createdBy: profileId,
       createdAt: new Date(),
       updatedAt: new Date(),
+      computedDutyPesewas: null,
+      dutyRatePercent: null,
       pending: true,
     };
     dispatchOptimistic({ type: "add", shipment: temp });
@@ -92,6 +94,8 @@ export function ShipmentsBoard({
         customsValuePesewas: Math.round(Number(formData.get("customsValueGhs") ?? 0) * 100),
         quantity: Number.parseInt(String(formData.get("quantity") ?? "1"), 10) || 1,
         status: String(formData.get("status") ?? "booked") as Shipment["status"],
+        computedDutyPesewas: null,
+        dutyRatePercent: null,
       },
     });
     const result = await updateShipmentRecord(formData);
@@ -183,6 +187,22 @@ export function ShipmentsBoard({
                         × {shipment.quantity}
                       </span>
                     </div>
+
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {shipment.pending ? (
+                        "Estimating duty…"
+                      ) : shipment.computedDutyPesewas === null ? (
+                        "No published rate for this HS code yet"
+                      ) : (
+                        <>
+                          Est. duty{" "}
+                          <span className="font-medium text-foreground">
+                            {formatGHS(shipment.computedDutyPesewas)}
+                          </span>{" "}
+                          ({shipment.dutyRatePercent}%)
+                        </>
+                      )}
+                    </p>
 
                     <div className="mt-auto flex items-center justify-between gap-2 pt-4">
                       {next ? (

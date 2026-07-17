@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { clients, shipments } from "@/db/schema";
 import { requireProfile } from "@/lib/auth";
+import { syncShipmentDutyCalculation } from "@/lib/duty";
 import { STATUS_ORDER, type ShipmentStatus } from "./types";
 
 export type ActionState = { error?: string };
@@ -53,16 +54,21 @@ export async function createShipmentRecord(formData: FormData): Promise<ActionSt
     return { error: "That client wasn't found" };
   }
 
-  await db.insert(shipments).values({
-    organizationId: profile.organizationId,
-    clientId,
-    hsCode,
-    description: description || null,
-    customsValuePesewas,
-    quantity,
-    status: STATUS_ORDER.includes(status) ? status : "booked",
-    createdBy: profile.id,
-  });
+  const [created] = await db
+    .insert(shipments)
+    .values({
+      organizationId: profile.organizationId,
+      clientId,
+      hsCode,
+      description: description || null,
+      customsValuePesewas,
+      quantity,
+      status: STATUS_ORDER.includes(status) ? status : "booked",
+      createdBy: profile.id,
+    })
+    .returning({ id: shipments.id });
+
+  await syncShipmentDutyCalculation(created.id, hsCode, customsValuePesewas, quantity);
 
   revalidatePath("/dashboard/shipments");
   revalidatePath("/dashboard");
@@ -101,6 +107,8 @@ export async function updateShipmentRecord(formData: FormData): Promise<ActionSt
       updatedAt: new Date(),
     })
     .where(and(eq(shipments.id, id), eq(shipments.organizationId, profile.organizationId)));
+
+  await syncShipmentDutyCalculation(id, hsCode, customsValuePesewas, quantity);
 
   revalidatePath("/dashboard/shipments");
   revalidatePath("/dashboard");

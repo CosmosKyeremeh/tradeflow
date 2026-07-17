@@ -8,14 +8,18 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/clients", label: "Clients" },
   { href: "/dashboard/shipments", label: "Shipments" },
+  { href: "/dashboard/calculator", label: "Duty calculator" },
 ];
 
-export function DashboardNav() {
+const ADMIN_NAV_ITEMS = [{ href: "/dashboard/admin/tariffs", label: "Tariff schedule" }];
+
+export function DashboardNav({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
+  const items = isAdmin ? [...NAV_ITEMS, ...ADMIN_NAV_ITEMS] : NAV_ITEMS;
 
   return (
     <nav className="flex-1 space-y-1 px-2 py-4">
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const isActive =
           item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href);
 

@@ -2,7 +2,12 @@ import type { clients, shipments } from "@/db/schema";
 
 export type Shipment = typeof shipments.$inferSelect;
 export type ShipmentStatus = Shipment["status"];
-export type OptimisticShipment = Shipment & { pending?: boolean; clientName: string };
+export type OptimisticShipment = Shipment & {
+  pending?: boolean;
+  clientName: string;
+  computedDutyPesewas: number | null;
+  dutyRatePercent: number | null;
+};
 export type ClientOption = Pick<typeof clients.$inferSelect, "id" | "name">;
 
 export const STATUS_ORDER: ShipmentStatus[] = [

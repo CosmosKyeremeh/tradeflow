@@ -1,6 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { clients, shipments } from "@/db/schema";
+import { clients, dutyCalculations, shipments } from "@/db/schema";
 import { requireProfile } from "@/lib/auth";
 import { ShipmentsBoard } from "./ShipmentsBoard";
 
@@ -22,9 +22,12 @@ export async function ShipmentsData() {
         createdBy: shipments.createdBy,
         createdAt: shipments.createdAt,
         updatedAt: shipments.updatedAt,
+        computedDutyPesewas: dutyCalculations.computedDutyPesewas,
+        dutyRatePercent: dutyCalculations.ratePercentApplied,
       })
       .from(shipments)
       .innerJoin(clients, eq(shipments.clientId, clients.id))
+      .leftJoin(dutyCalculations, eq(dutyCalculations.shipmentId, shipments.id))
       .where(eq(shipments.organizationId, profile.organizationId))
       .orderBy(desc(shipments.createdAt)),
     db
@@ -36,7 +39,10 @@ export async function ShipmentsData() {
 
   return (
     <ShipmentsBoard
-      initialShipments={orgShipments}
+      initialShipments={orgShipments.map((s) => ({
+        ...s,
+        dutyRatePercent: s.dutyRatePercent === null ? null : Number(s.dutyRatePercent),
+      }))}
       clientOptions={orgClients}
       organizationId={profile.organizationId}
       profileId={profile.id}

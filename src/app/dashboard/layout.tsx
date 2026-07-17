@@ -5,6 +5,7 @@ import { profiles, organizations } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { signOut } from "./actions";
 import { DashboardNav } from "./DashboardNav";
+import { isAdminEmail } from "@/lib/auth";
 
 export default async function DashboardLayout({
   children,
@@ -40,7 +41,7 @@ export default async function DashboardLayout({
             {profile?.organizationName ?? "Your organization"}
           </p>
         </div>
-        <DashboardNav />
+        <DashboardNav isAdmin={isAdminEmail(profile?.email)} />
         <div className="border-t border-border px-4 py-4">
           <p className="truncate text-xs text-muted-foreground">
             {profile?.fullName ?? profile?.email}

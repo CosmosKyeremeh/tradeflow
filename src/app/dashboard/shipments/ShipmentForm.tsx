@@ -1,6 +1,12 @@
+"use client";
+
+import { useRef, useState, useTransition } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Field, Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { SubmitButton } from "@/components/ui/SubmitButton";
+import { formatGHS } from "@/lib/utils";
+import { estimateDuty, type DutyEstimate } from "../calculator/actions";
 import { STATUS_LABEL, STATUS_ORDER, type ClientOption, type Shipment } from "./types";
 
 export function ShipmentForm({
@@ -14,6 +20,27 @@ export function ShipmentForm({
   error?: string | null;
   submitLabel: string;
 }) {
+  const hsCodeRef = useRef<HTMLInputElement>(null);
+  const valueRef = useRef<HTMLInputElement>(null);
+  const quantityRef = useRef<HTMLInputElement>(null);
+  const [estimate, setEstimate] = useState<DutyEstimate | { error: string } | null>(null);
+  const [isEstimating, startEstimate] = useTransition();
+
+  function refreshEstimate() {
+    const hsCode = hsCodeRef.current?.value.trim();
+    const value = valueRef.current?.value;
+    if (!hsCode || !value) return;
+
+    const fd = new FormData();
+    fd.set("hsCode", hsCode);
+    fd.set("customsValueGhs", value);
+    fd.set("quantity", quantityRef.current?.value || "1");
+
+    startEstimate(async () => {
+      setEstimate(await estimateDuty(fd));
+    });
+  }
+
   if (clientOptions.length === 0 && !shipment) {
     return (
       <p className="rounded-lg bg-surface-muted px-3 py-3 text-sm text-muted-foreground">
@@ -44,11 +71,13 @@ export function ShipmentForm({
 
       <Field label="HS code" htmlFor="hsCode">
         <Input
+          ref={hsCodeRef}
           id="hsCode"
           name="hsCode"
           required
           placeholder="e.g. 8471.30"
           defaultValue={shipment?.hsCode}
+          onBlur={refreshEstimate}
         />
       </Field>
 
@@ -65,6 +94,7 @@ export function ShipmentForm({
       <div className="grid grid-cols-2 gap-3">
         <Field label="Customs value (GHS)" htmlFor="customsValueGhs">
           <Input
+            ref={valueRef}
             id="customsValueGhs"
             name="customsValueGhs"
             type="number"
@@ -74,10 +104,12 @@ export function ShipmentForm({
             defaultValue={
               shipment ? (shipment.customsValuePesewas / 100).toFixed(2) : undefined
             }
+            onBlur={refreshEstimate}
           />
         </Field>
         <Field label="Quantity" htmlFor="quantity">
           <Input
+            ref={quantityRef}
             id="quantity"
             name="quantity"
             type="number"
@@ -85,9 +117,39 @@ export function ShipmentForm({
             step="1"
             required
             defaultValue={shipment?.quantity ?? 1}
+            onBlur={refreshEstimate}
           />
         </Field>
       </div>
+
+      <AnimatePresence mode="wait">
+        {(isEstimating || estimate) && (
+          <motion.div
+            key={isEstimating ? "pending" : JSON.stringify(estimate)}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ type: "spring", stiffness: 340, damping: 34 }}
+            className="overflow-hidden rounded-lg bg-surface-muted px-3 py-2.5 text-xs"
+          >
+            {isEstimating ? (
+              <span className="text-muted-foreground">Estimating duty…</span>
+            ) : estimate && "error" in estimate ? (
+              <span className="text-danger">{estimate.error}</span>
+            ) : estimate && !estimate.found ? (
+              <span className="text-muted-foreground">No published rate for this HS code yet</span>
+            ) : (
+              estimate && (
+                <span className="text-foreground">
+                  Est. duty{" "}
+                  <span className="font-medium">{formatGHS(estimate.computedDutyPesewas!)}</span>{" "}
+                  <span className="text-muted-foreground">({estimate.ratePercent}%)</span>
+                </span>
+              )
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {shipment && (
         <Field label="Status" htmlFor="status">

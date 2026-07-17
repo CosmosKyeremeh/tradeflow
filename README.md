@@ -2,7 +2,9 @@
 
 Shipment, client, and duty management for Ghanaian traders and freight forwarders.
 See `TradeFlow_PRD_v1.0.md` (from our planning conversation) for the full product spec.
-This repo covers **Phase 0 — Foundations**: auth, data model, RLS, and CI.
+
+Status: **Phase 0** (foundations), **Phase 1** (client & shipment CRUD), and
+**Phase 2** (duty calculator) are in. See [What's next](#whats-next-phase-3).
 
 ## Stack
 
@@ -25,7 +27,9 @@ This repo covers **Phase 0 — Foundations**: auth, data model, RLS, and CI.
 cp .env.example .env.local
 ```
 
-Fill in the three values from step 1.
+Fill in the three values from step 1, plus `ADMIN_EMAILS` — a comma-separated
+list of accounts allowed to manage the shared tariff schedule at
+`/dashboard/admin/tariffs` (see [Duty calculator](#duty-calculator) below).
 
 ## 3. Install dependencies
 
@@ -64,29 +68,56 @@ Visit `http://localhost:3000` — you'll be redirected to `/login`. Sign up for
 an account; the trigger in `0001_rls_and_triggers.sql` creates your
 organization and profile automatically.
 
+## Duty calculator
+
+Duty estimates are driven by `tariff_entries` — shared reference data across
+every organization (Ghana's actual published rates), so write access is
+gated by the `ADMIN_EMAILS` allowlist rather than any org's role. Manage it
+at `/dashboard/admin/tariffs` once your email is in that list.
+
+To get a workable demo without the real GRA schedule in hand:
+
+```bash
+npm run db:seed
+```
+
+This inserts a handful of illustrative HS code/rate pairs, each description
+prefixed `[EXAMPLE]`. **These are not real Ghana customs rates** — replace
+them via the admin UI before quoting an actual client. The calculator itself
+(`/dashboard/calculator`, and inline while creating a shipment) shows "no
+published rate" rather than guessing when an HS code isn't in the table.
+
 ## Project structure
 
 ```
 src/
   app/
     (auth)/login, (auth)/signup   — public auth pages
-    dashboard/                    — protected app shell + pages
-    layout.tsx, globals.css       — root layout, design tokens
+    dashboard/
+      clients/, shipments/        — CRUD: bento cards/tables, optimistic UI, spatial-origin modals
+      calculator/                 — standalone duty calculator
+      admin/tariffs/              — tariff schedule CRUD (ADMIN_EMAILS-gated)
+      layout.tsx, page.tsx        — protected shell + overview bento stats
+    layout.tsx, globals.css       — root layout, design tokens (incl. glass/elevation/motion)
+  components/ui/                  — Button, Card, Modal, Skeleton, Select, Input, etc.
   db/
     schema.ts                     — Drizzle schema (source of truth)
     index.ts                      — Drizzle client
   lib/
-    supabase/                     — browser, server, and middleware clients
+    supabase/                     — browser and server clients
+    auth.ts                       — requireProfile()/requireAdmin() helpers
+    duty.ts                       — tariff lookup + duty calculation engine
     utils.ts                      — cn() helper, GHS currency formatter
   proxy.ts                        — refreshes the Supabase session, gates protected routes
 drizzle/                          — SQL migrations
+scripts/seed-tariffs.mjs          — seeds placeholder tariff rates (npm run db:seed)
 .github/workflows/ci.yml          — lint, typecheck, build on every PR
 ```
 
-## What's next (Phase 1)
+## What's next (Phase 3)
 
-Client and shipment CRUD — the `/dashboard/clients` and `/dashboard/shipments`
-pages currently render empty states only.
+Documents & notifications — file upload/storage per shipment (Supabase
+Storage), email and in-app notifications on status change.
 
 ## Scripts
 
@@ -97,3 +128,4 @@ pages currently render empty states only.
 | `npm run lint` | ESLint |
 | `npm run db:generate` | Regenerate SQL from `src/db/schema.ts` after a schema change |
 | `npm run db:studio` | Open Drizzle Studio to browse the database |
+| `npm run db:seed` | Seed placeholder tariff entries (see [Duty calculator](#duty-calculator)) |

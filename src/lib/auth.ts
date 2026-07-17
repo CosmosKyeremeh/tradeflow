@@ -30,3 +30,27 @@ export async function requireProfile() {
 
   return profile as typeof profile & { organizationId: string };
 }
+
+// The tariff schedule is shared reference data across every organization
+// (Ghana's actual published rates), not per-tenant. Gating writes to it by
+// org role would let any org's owner corrupt duty estimates for every other
+// org, so access is instead tied to an explicit allowlist.
+function adminEmails() {
+  return (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export function isAdminEmail(email: string | null | undefined) {
+  if (!email) return false;
+  return adminEmails().includes(email.toLowerCase());
+}
+
+export async function requireAdmin() {
+  const profile = await requireProfile();
+  if (!isAdminEmail(profile.email)) {
+    redirect("/dashboard");
+  }
+  return profile;
+}
