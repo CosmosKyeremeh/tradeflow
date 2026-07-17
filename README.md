@@ -4,8 +4,9 @@ Shipment, client, and duty management for Ghanaian traders and freight forwarder
 See `TradeFlow_PRD_v1.0.md` (from our planning conversation) for the full product spec.
 
 Status: **Phase 0** (foundations), **Phase 1** (client & shipment CRUD),
-**Phase 2** (duty calculator), and **Phase 3** (documents & in-app
-notifications) are in. See [What's next](#whats-next-phase-4).
+**Phase 2** (duty calculator), **Phase 3** (documents & in-app
+notifications), and **Phase 4** (trade analytics) are in. See
+[What's next](#whats-next-phase-5).
 
 ## Stack
 
@@ -107,6 +108,18 @@ provider and API key, which nobody had on hand when this phase was built.
 The `notifications` table is the trigger point a future mailer job would
 read from (see `src/lib/notifications.ts`).
 
+## Trade analytics
+
+`/dashboard/analytics` aggregates each organization's own data — no new
+tables, just Drizzle group-by queries over `shipments` and
+`duty_calculations` (`src/app/dashboard/analytics/queries.ts`): all-time
+totals, shipment volume and duty calculated per month (last 6 months),
+top HS codes, and top clients, all by shipment count/value. Charts are
+small hand-rolled SVG components (`analytics/charts/`) rather than a
+charting library, consistent with the rest of the UI kit. A CSV export
+of every shipment (`/api/analytics/export`) is linked from the page
+header.
+
 ## Project structure
 
 ```
@@ -118,9 +131,11 @@ src/
       shipments/documents/        — file attachments (upload/list/delete)
       notifications/              — bell icon, unread list, mark-as-read
       calculator/                 — standalone duty calculator
+      analytics/                  — trade analytics: aggregation queries, bento charts
       admin/tariffs/              — tariff schedule CRUD (ADMIN_EMAILS-gated)
       layout.tsx, page.tsx        — protected shell + overview bento stats
       MobileNav.tsx, SidebarContent.tsx — hamburger drawer nav (mobile) / aside (desktop)
+    api/analytics/export/         — CSV export route handler
     layout.tsx, globals.css       — root layout, design tokens (incl. glass/elevation/motion)
   components/ui/                  — Button, Card, Modal (portaled), Skeleton, Select, Input, etc.
   db/
@@ -138,10 +153,11 @@ scripts/seed-tariffs.mjs          — seeds placeholder tariff rates (npm run db
 .github/workflows/ci.yml          — lint, typecheck, build on every PR
 ```
 
-## What's next (Phase 4)
+## What's next (Phase 5)
 
-Trade analytics dashboard — aggregation queries and charts (volume over
-time, top HS codes, duty totals, client activity), plus CSV export.
+Hardening & compliance — security review, RLS policy audit, Data
+Protection Act compliance pass, performance testing on low-end devices,
+and an accessibility audit.
 
 ## Scripts
 

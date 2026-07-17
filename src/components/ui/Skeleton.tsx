@@ -36,6 +36,24 @@ export function TableSkeleton({ rows = 4 }: { rows?: number }) {
   );
 }
 
+export function AnalyticsSkeleton() {
+  return (
+    <div className="space-y-4">
+      <StatGridSkeleton />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border border-border bg-surface p-5 lg:col-span-2">
+          <Skeleton className="h-3.5 w-48" />
+          <Skeleton className="mt-4 h-36 w-full" />
+        </div>
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <Skeleton className="h-3.5 w-28" />
+          <Skeleton className="mt-4 h-36 w-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CardGridSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

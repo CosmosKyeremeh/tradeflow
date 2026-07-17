@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/clients", label: "Clients" },
   { href: "/dashboard/shipments", label: "Shipments" },
   { href: "/dashboard/calculator", label: "Duty calculator" },
+  { href: "/dashboard/analytics", label: "Analytics" },
 ];
 
 const ADMIN_NAV_ITEMS = [{ href: "/dashboard/admin/tariffs", label: "Tariff schedule" }];
