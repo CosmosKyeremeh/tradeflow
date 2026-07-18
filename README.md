@@ -1,7 +1,9 @@
 # TradeFlow
 
 Shipment, client, and duty management for Ghanaian traders and freight forwarders.
-See `TradeFlow_PRD_v1.0.md` (from our planning conversation) for the full product spec.
+See `docs/TradeFlow_PRD_v1.0.md` (from our planning conversation) for the
+full product spec, and `docs/TradeFlow_Usage_Guide.pdf` for a role-by-role
+guide to the Platform Owner, Admin, and User.
 
 Status: **Phase 0** (foundations), **Phase 1** (client & shipment CRUD),
 **Phase 2** (duty calculator), **Phase 3** (documents & in-app
