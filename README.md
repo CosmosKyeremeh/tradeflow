@@ -5,8 +5,9 @@ See `TradeFlow_PRD_v1.0.md` (from our planning conversation) for the full produc
 
 Status: **Phase 0** (foundations), **Phase 1** (client & shipment CRUD),
 **Phase 2** (duty calculator), **Phase 3** (documents & in-app
-notifications), **Phase 4** (trade analytics), and **Phase 5** (hardening
-& compliance) are in. See [What's next](#whats-next-phase-6).
+notifications), **Phase 4** (trade analytics), **Phase 5** (hardening &
+compliance), and team invites (multi-user organizations) are in. See
+[What's next](#whats-next-phase-6).
 
 ## Stack
 
@@ -41,7 +42,7 @@ npm install
 
 ## 4. Apply the database schema
 
-Five migration files live in `drizzle/`, run in order:
+Seven migration files live in `drizzle/`, run in order:
 
 - `0000_lonely_mauler.sql` — tables, enums, and foreign keys (Drizzle-generated from `src/db/schema.ts`)
 - `0001_rls_and_triggers.sql` — row-level security policies and the
@@ -51,6 +52,10 @@ Five migration files live in `drizzle/`, run in order:
   Storage bucket, and its org-scoped storage policies
 - `0004_profile_column_grants.sql` — closes a privilege-escalation hole in
   the default Supabase PostgREST grants (see [Security & hardening](#security--hardening))
+- `0005_invites_table.sql` — the `invites` table (Drizzle-generated)
+- `0006_invites_rls_and_join_trigger.sql` — invites RLS, and updates
+  `handle_new_user` to join an inviting organization instead of always
+  creating a new one (see [Team invites](#team-invites))
 
 Easiest path: open the **SQL Editor** in the Supabase dashboard, paste each
 file's contents in order, and run it. Alternatively, with `DATABASE_URL` set
@@ -61,12 +66,13 @@ npm run db:migrate
 ```
 
 > `npm run db:migrate` only applies Drizzle-tracked migrations (`0000_...`,
-> `0002_...`). Run `0001_rls_and_triggers.sql`, `0003_documents_storage.sql`,
-> and `0004_profile_column_grants.sql` manually via the SQL Editor, since RLS
-> policies, Storage setup, and grants aren't part of Drizzle's own migration
-> tracking in this setup. **`0004` is not optional** — without it, any
-> signed-up user can escalate to admin or read another organization's data
-> via Supabase's public REST API (see below).
+> `0002_...`, `0005_...`). Run `0001_rls_and_triggers.sql`,
+> `0003_documents_storage.sql`, `0004_profile_column_grants.sql`, and
+> `0006_invites_rls_and_join_trigger.sql` manually via the SQL Editor, since
+> RLS policies, Storage setup, and trigger/grant changes aren't part of
+> Drizzle's own migration tracking in this setup. **`0004` is not optional**
+> — without it, any signed-up user can escalate to admin or read another
+> organization's data via Supabase's public REST API (see below).
 
 ## 5. Run it
 
@@ -125,6 +131,25 @@ charting library, consistent with the rest of the UI kit. A CSV export
 of every shipment (`/api/analytics/export`) is linked from the page
 header.
 
+## Team invites
+
+Every sign-up used to always create a brand-new organization — there was
+no way for a second person to join an existing one. `/dashboard/team` lets
+any org member invite a teammate by email; the invite has no token. When
+someone signs up with the exact email that was invited, `handle_new_user`
+(updated in `0006_invites_rls_and_join_trigger.sql`) joins them to the
+inviting organization (as `role: agent`) instead of creating a fresh one —
+Supabase's own email confirmation is what proves they own that inbox, the
+same proof a token would provide, so there's nothing extra to build or
+leak. Inviting an email that already has a TradeFlow account is rejected
+up front, since there's no "switch organizations" flow for an existing
+user yet.
+
+Roles (`owner` / `agent` / `viewer`) are stored but not yet enforced —
+every member of an organization currently has equal full access to its
+clients, shipments, and documents. Real per-role permissions (e.g. viewers
+read-only) are a deliberately separate, future change.
+
 ## Security & hardening
 
 Drizzle connects to Postgres directly (not through PostgREST), so it
@@ -161,8 +186,8 @@ Also added this phase:
   shipment name starting with `=`, `+`, `-`, or `@` now gets a literal-text
   prefix so it can't execute as a formula when opened in Excel/Sheets.
 - `audit_log` (schema already had the table, nothing wrote to it) now
-  records every client/shipment/document/tariff create, update, and
-  delete — see `src/lib/audit.ts`.
+  records every client/shipment/document/tariff/invite create, update,
+  and delete — see `src/lib/audit.ts`.
 - Defense-in-depth: a couple of internal helpers (`syncShipmentDutyCalculation`,
   `deleteDocument`) that trusted their caller's ownership check now
   re-verify `organizationId` themselves.
@@ -176,7 +201,9 @@ client is blocked once it has shipment history (`onDelete: "restrict"`),
 which will need a retention-policy decision (customs records likely have
 their own statutory retention period) before an erasure flow can be built.
 Formal registration as a data controller with Ghana's Data Protection
-Commission is an organizational step, not an engineering one.
+Commission is an organizational step, not an engineering one. Team invites
+(above) close the "every org is single-user" gap this section used to
+flag.
 
 ## Installable (PWA)
 
@@ -207,6 +234,7 @@ src/
       notifications/              — bell icon, unread list, mark-as-read
       calculator/                 — standalone duty calculator
       analytics/                  — trade analytics: aggregation queries, bento charts
+      team/                       — invite/revoke teammates, member list
       admin/tariffs/              — tariff schedule CRUD (ADMIN_EMAILS-gated)
       layout.tsx, page.tsx        — protected shell + overview bento stats
       MobileNav.tsx, SidebarContent.tsx — hamburger drawer nav (mobile) / aside (desktop)

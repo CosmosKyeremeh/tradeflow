@@ -179,6 +179,25 @@ export const notifications = pgTable("notifications", {
     .defaultNow(),
 });
 
+// A pending invitation to join an organization. No token: the invited
+// email only ever joins the org once Supabase's own signup confirmation
+// proves they own that inbox, so there's nothing extra to guess or leak.
+// The handle_new_user trigger checks this table on every new signup and
+// joins the inviting org instead of creating a fresh one when a match is
+// found (see drizzle/0005_invites.sql).
+export const invites = pgTable("invites", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  email: varchar("email", { length: 255 }).notNull(),
+  invitedBy: uuid("invited_by").references(() => profiles.id),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const auditLog = pgTable("audit_log", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id").references(() => organizations.id, {

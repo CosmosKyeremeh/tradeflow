@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/shipments", label: "Shipments" },
   { href: "/dashboard/calculator", label: "Duty calculator" },
   { href: "/dashboard/analytics", label: "Analytics" },
+  { href: "/dashboard/team", label: "Team" },
 ];
 
 const ADMIN_NAV_ITEMS = [{ href: "/dashboard/admin/tariffs", label: "Tariff schedule" }];
